@@ -1,0 +1,18 @@
+---
+title: 'Code source: connecting SQL to R'
+author: "Firza Riany"
+date: "16/01/2021"
+output: html_document
+---
+                      
+```{r}
+con = DBI::dbConnect(odbc::odbc(),
+                     driver = "PostgreSQL ANSI(x64)",,
+                     database = "dvdrental_2",
+                     port = 5433,
+                     host = "localhost",
+                     PWD = rstudioapi::askForPassword("Database password"))
+
+
+                     
+```
