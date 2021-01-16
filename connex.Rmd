@@ -7,12 +7,12 @@ output: html_document
                       
 ```{r}
 con = DBI::dbConnect(odbc::odbc(),
-                     driver = "PostgreSQL ANSI(x64)",,
+                     driver = "PostgreSQL ANSI(x64)",
                      database = "dvdrental_2",
                      port = 5433,
                      host = "localhost",
+                     UID = rstudioapi::askForPassword("Database user"),
                      PWD = rstudioapi::askForPassword("Database password"))
-
-
-                     
+# username = postgres
+# password = R4hasiabanget
 ```
