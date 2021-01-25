@@ -6,6 +6,9 @@ output: html_document
 ---
                       
 ```{r}
+library(DBI)
+library(dbplyr)
+library(dplyr)
 con = DBI::dbConnect(odbc::odbc(),
                      driver = "PostgreSQL ANSI(x64)",
                      database = "dvdrental_2",
@@ -15,4 +18,30 @@ con = DBI::dbConnect(odbc::odbc(),
                      PWD = rstudioapi::askForPassword("Database password"))
 # username = postgres
 # password = R4hasiabanget
+```
+
+```{r question_1}
+# This is to find the most rented films
+dbGetQuery(con,
+           "SELECT film.title, COUNT(rental.inventory_id) AS counter
+           FROM inventory
+           INNER JOIN rental
+            ON inventory.inventory_id = rental.inventory_id
+           INNER JOIN film
+            ON inventory.film_id= film.film_id
+           GROUP BY film.title
+           ORDER BY counter DESC
+           LIMIT 5")
+```
+
+The equivalent script in R
+
+```{r dbplyr}
+film_db = dbplyr::tbl(con, "film")  # getting the table
+
+film_db
+
+# select function
+film_db %>% 
+  select(film_id, title)
 ```
