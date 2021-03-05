@@ -4,20 +4,94 @@ author: "Firza Riany"
 date: "16/01/2021"
 output: html_document
 ---
-                      
-```{r}
+
+## Establish a connection
+
+```{r message=FALSE, warning=FALSE}
 library(DBI)
 library(dbplyr)
 library(dplyr)
-con = DBI::dbConnect(odbc::odbc(),
-                     driver = "PostgreSQL ANSI(x64)",
-                     database = "dvdrental_2",
-                     port = 5433,
-                     host = "localhost",
-                     UID = rstudioapi::askForPassword("Database user"),
-                     PWD = rstudioapi::askForPassword("Database password"))
+rental = DBI::dbConnect(odbc::odbc(),
+                        driver = "PostgreSQL ANSI(x64)",
+                        database = "dvdrental_2",
+                        port = 5433,
+                        host = "localhost",
+                        UID = rstudioapi::askForPassword("Database user"),
+                        PWD = rstudioapi::askForPassword("Database password"))
 # username = postgres
 # password = R4hasiabanget
+```
+
+## Simple queries
+
+To see the tables that the database contains
+
+```{r check tables}
+src_dbi(rental)
+```
+
+You can also check the tables from the connection tab in the upper right box of your RStudio. It basically serves a similar function as when you open the schema tab in SQL.
+
+## Navigating through the database using SQL queries in R
+
+If you want to navigate through the database using SQL queries, you can use function tbl() followed by the SQL queries. This function is merely asking R to send queries to SQL, so that SQL can do the relevant work with the database.
+
+```{r select everything}
+# Select everything from the film table
+
+tbl(rental, sql("SELECT * FROM film"))
+```
+
+```{r select count}
+# How many rating groups are listed in the film table
+
+tbl(rental, sql("SELECT COUNT(DISTINCT(rating)) FROM film"))
+
+```
+
+```{r select distinct}
+# Listing all the rating groups present in the film table
+
+tbl(rental, sql("SELECT DISTINCT(rating) FROM film"))
+```
+
+```{r select where}
+# Selecting the film titles where rating groups are PG and PG-13
+
+tbl(rental, sql("SELECT title, length, replacement_cost, rental_rate, rating
+                FROM film
+                WHERE rating = 'PG-13' OR rating = 'PG'
+                ORDER BY rental_rate ASC"))
+```
+
+Besides using the tbl() function to navigate a database, you can also use dplyr verbs. Here are the alternative syntax in dplyr for each of the SQL queries in the above.
+
+The same operation can be done using dplyr syntax. For example, to select several variables (or column) from the table \*"surveys"\*, I can first get the table using tbl() function then I select the variables by passing on the names of the variables in the arguments of select().
+
+```{r dplyr select}
+# Selecting everything from the film table
+
+film_table = tbl(rental, "film")
+
+film_table %>%
+  select(film_id, title, description, release_year, language_id, rental_duration,
+         rental_rate, length, replacement_cost, rating, last_update,
+         special_features, fulltext)
+```
+
+```{r dplyr select count}
+# How many rating groups are listed in the film table
+
+film_table %>% 
+  distinct(rating) %>%
+  count()
+```
+
+```{r dplyr select distinct}
+# Listing all the rating groups present in the film table
+
+film_table %>%
+  distinct(rating)
 ```
 
 ```{r question_1}
