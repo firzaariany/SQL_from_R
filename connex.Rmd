@@ -11,6 +11,8 @@ output: html_document
 library(DBI)
 library(dbplyr)
 library(dplyr)
+library(RPostgreSQL)
+
 rental = DBI::dbConnect(odbc::odbc(),
                         driver = "PostgreSQL ANSI(x64)",
                         database = "dvdrental_2",
@@ -20,6 +22,12 @@ rental = DBI::dbConnect(odbc::odbc(),
                         PWD = rstudioapi::askForPassword("Database password"))
 # username = postgres
 # password = R4hasiabanget
+```
+
+```{r connex 2}
+mammals <- DBI::dbConnect(RSQLite::SQLite(), "data_raw/portal_mammals.sqlite")
+
+rental_2 = DBI::dbConnect(RPostgreSQL::PostgreSQL(), "C:/Users/firza/Documents/Portfolio/Scripts_to Github/SQL_from_R/dvdrental.tar")
 ```
 
 ## Simple queries
