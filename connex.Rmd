@@ -27,7 +27,7 @@ rental = DBI::dbConnect(odbc::odbc(),
 ```{r connex 2}
 mammals <- DBI::dbConnect(RSQLite::SQLite(), "data_raw/portal_mammals.sqlite")
 
-rental_2 = DBI::dbConnect(RPostgreSQL::PostgreSQL(), "C:/Users/firza/Documents/Portfolio/Scripts_to Github/SQL_from_R/dvdrental.tar")
+rental_2 = DBI::dbConnect(RPostgreSQL::PostgreSQL(), "dvdrental")
 ```
 
 ## Simple queries
@@ -82,9 +82,7 @@ The same operation can be done using dplyr syntax. For example, to select severa
 film_table = tbl(rental, "film")
 
 film_table %>%
-  select(film_id, title, description, release_year, language_id, rental_duration,
-         rental_rate, length, replacement_cost, rating, last_update,
-         special_features, fulltext)
+  select(film_id, title, rental_rate, replacement_cost, rating)
 ```
 
 ```{r dplyr select count}
@@ -102,28 +100,120 @@ film_table %>%
   distinct(rating)
 ```
 
+```{r select filter dplyr}
+subset_film = 
+  film_table %>%
+  filter(rating == "PG-13" | rating == "PG") %>%
+  select(title, length, replacement_cost, rental_rate, rating) %>%
+  arrange(rental_rate) %>%
+  collect()
+
+dim(subset_film)
+
+class(subset_film)
+```
+
+```{r sans collect}
+subset_film_0 = 
+  film_table %>%
+  filter(rating == "PG-13" | rating == "PG") %>%
+  select(title, length, replacement_cost, rental_rate, rating) %>%
+  arrange(rental_rate)
+
+dim(subset_film_0)
+
+class(subset_film_0)
+```
+
 ```{r question_1}
 # This is to find the most rented films
-dbGetQuery(con,
-           "SELECT film.title, COUNT(rental.inventory_id) AS counter
+dbGetQuery(rental,
+           "SELECT film.title, COUNT(inventory.film_id) AS counter
            FROM inventory
            INNER JOIN rental
             ON inventory.inventory_id = rental.inventory_id
            INNER JOIN film
             ON inventory.film_id= film.film_id
-           GROUP BY film.title
+           GROUP BY film.film_id
            ORDER BY counter DESC
            LIMIT 5")
 ```
 
-The equivalent script in R
+To find the most rented films
 
-```{r dbplyr}
-film_db = dbplyr::tbl(con, "film")  # getting the table
+I need to get the title of the films that have been rented the most
 
-film_db
+To do that, I need to check how many rentals are made for each film. This information can be found in the *rental* table. Naturally, we can just join *rental* table and *film* table by the same identifier. However, we can't find the same identifier between *rental* and *film* table.
 
-# select function
-film_db %>% 
-  select(film_id, title)
+```{r film table}
+film_db = tbl(rental, "film")  # getting the table
+
+head(film_db, n = 5)
 ```
+
+```{r rental table}
+rental_db = tbl(rental, "rental")
+
+head(rental_db, n = 5)
+```
+
+So, there are no similar identifier between *rental* and *film* table. However, there is inventory_id in *rental* table which can also be found in *inventory* table. When we check *inventory* table, turned out there is film_id, the identifier to find film title in the *film* table.
+
+```{r inventory table}
+inventory_db = tbl(rental, "inventory")
+
+head(inventory_db, n = 5)
+```
+
+In a way, *inventory* table can be the bridge between *rental* and *film* tables to find the total rentals for each film title.
+
+What we need to do now is we can inner join *rental* and *inventory* tables by inventory_id
+
+```{r join rental x invent}
+join_tbl = inner_join(rental_db, inventory_db, by = "inventory_id")
+
+join_tbl
+```
+
+Then to get the total rentals of film, we count the total rentals by film_id. In a way, we aggregate the total rentals for each film_id. In SQL, we use COUNT(film_id) ... GROUP BY(film_id).
+
+So, after joining *rental* and *inventory* tables (stored in join_tbl), I group the film_id, then count how many film_id appears in the join_tbl. (stored in **count** variable) To get the film title, I join the results with film_db. To find the most rented films, I order the results based on **count** variable in an descending order. For the final touch, I select only variable **title, count, replacement_cost, and rating** from film_db. Then I will have to store this in my R's environment by passing collect() function at the end of the syntax.
+
+```{r most_rented}
+most_rented = 
+  join_tbl %>% 
+  group_by(film_id) %>%
+  summarise(count = n()) %>%
+  inner_join(film_db, by = "film_id") %>%
+  arrange(desc(count)) %>%
+  select(title, count, replacement_cost, rating) %>%
+  collect()
+
+most_rented
+```
+
+To get the top five, I will use the function head() with argument n = 5.
+
+```{r top_five}
+top_five = head(most_rented, n = 5)
+
+top_five
+```
+
+In SQL, you should pass the following code to get the same results
+
+```{r SQL top_five}
+tbl(rental, sql("SELECT title, COUNT(inventory.film_id) AS counter
+           FROM inventory
+           INNER JOIN rental
+            ON inventory.inventory_id = rental.inventory_id
+           INNER JOIN film
+            ON inventory.film_id= film.film_id
+           GROUP BY film.film_id
+           ORDER BY counter DESC
+           LIMIT 5"))
+```
+
+The pipeline of the syntax is basically the same. So I create nested inner join. Firstly between *rental* and *inventory* tables on inventory_id, which is the identifier presents in both tables. And secondly between the results of the previous join with *film* table on film_id which is the identifier presents in *film* and *inventory* table.
+
+And I count the multiple occurrence of film_id grouped by film_id and store the result in **count** variable. Then I order the result in a descending order and return only the top five rows.
